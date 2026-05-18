@@ -37,7 +37,7 @@ func (p Policy) PublishCandidate(candidate string, localIP net.IP) string {
 }
 
 // CandidateInitsFromSDP returns explicit ICE candidates from sdp after applying
-// policy to each host candidate.
+// policy to each host candidate. It does not modify the SDP.
 func CandidateInitsFromSDP(sdp string, policy Policy, localIP net.IP) []webrtc.ICECandidateInit {
 	var candidates []webrtc.ICECandidateInit
 	var mid string
@@ -65,20 +65,6 @@ func CandidateInitsFromSDP(sdp string, policy Policy, localIP net.IP) []webrtc.I
 		}
 	}
 	return candidates
-}
-
-// StripSDPCandidates removes trickled candidate attributes from an SDP blob.
-func StripSDPCandidates(sdp string) string {
-	lines := strings.Split(sdp, "\n")
-	out := make([]string, 0, len(lines))
-	for _, line := range lines {
-		trimmed := strings.TrimRight(line, "\r")
-		if strings.HasPrefix(trimmed, "a=candidate:") || trimmed == "a=end-of-candidates" {
-			continue
-		}
-		out = append(out, line)
-	}
-	return strings.Join(out, "\n")
 }
 
 func syntheticHostCandidateIP(ip net.IP) string {

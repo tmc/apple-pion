@@ -46,20 +46,3 @@ func TestCandidateInitsFromSDP(t *testing.T) {
 		t.Fatalf("candidate m-line = %v, want 0", candidates[0].SDPMLineIndex)
 	}
 }
-
-func TestStripSDPCandidates(t *testing.T) {
-	sdp := strings.Join([]string{
-		"v=0",
-		"a=mid:0",
-		"a=candidate:1 1 udp 2130706431 fd00::1 12345 typ host ufrag test",
-		"a=end-of-candidates",
-		"a=setup:actpass",
-	}, "\n")
-	got := StripSDPCandidates(sdp)
-	if strings.Contains(got, "a=candidate:") || strings.Contains(got, "a=end-of-candidates") {
-		t.Fatalf("candidate attributes were not stripped:\n%s", got)
-	}
-	if !strings.Contains(got, "a=mid:0") || !strings.Contains(got, "a=setup:actpass") {
-		t.Fatalf("non-candidate attributes were stripped:\n%s", got)
-	}
-}

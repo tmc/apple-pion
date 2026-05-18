@@ -54,16 +54,3 @@ func ExampleCandidateInitsFromSDP() {
 	// Output:
 	// candidate:1 1 udp 2130706431 fe80::1 12345 typ host
 }
-
-func ExampleStripSDPCandidates() {
-	sdp := strings.Join([]string{
-		"a=mid:0",
-		"a=candidate:1 1 udp 2130706431 fd00::1 12345 typ host",
-		"a=end-of-candidates",
-	}, "\n")
-
-	fmt.Println(icepolicy.StripSDPCandidates(sdp))
-
-	// Output:
-	// a=mid:0
-}
