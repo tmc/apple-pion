@@ -13,8 +13,8 @@ The current packages are:
   Pion's standard network implementation for DNS, TCP, unconstrained wildcard
   UDP, and unsupported families.
 
-The module uses released `github.com/tmc/apple v0.6.6`, which includes
-`x/network/nwpacket`.
+The module uses released `github.com/tmc/apple v0.6.7`, which includes
+`x/network/nwpacket` path reporting and outbound readiness retry knobs.
 
 `nwtransport` is intentionally hybrid. Network.framework owns the UDP listeners
 and UDP dials needed for Pion ICE on a selected Apple link. DNS, TCP,
