@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pion/transport/v4"
-	"github.com/tmc/apple/network/nwpacket"
+	"github.com/tmc/apple/x/network/nwpacket"
 )
 
 func TestNetImplementsTransportNet(t *testing.T) {

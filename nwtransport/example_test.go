@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/tmc/apple-pion/nwtransport"
-	"github.com/tmc/apple/network/nwpacket"
+	"github.com/tmc/apple/x/network/nwpacket"
 )
 
 func ExampleNew() {
