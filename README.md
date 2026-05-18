@@ -2,8 +2,11 @@
 
 This module contains small Pion adapters for `github.com/tmc/apple`.
 
-The current package is:
+The current packages are:
 
+- `github.com/tmc/apple-pion/icepolicy`: helpers for explicit link-local ICE
+  candidate publication when trusted peers cannot rely on mDNS candidate
+  exchange.
 - `github.com/tmc/apple-pion/nwtransport`: a Pion `transport.Net` adapter that
   routes concrete UDP listeners, configured wildcard UDP listeners, and UDP
   dials through `github.com/tmc/apple/x/network/nwpacket`, while falling back to
