@@ -6,7 +6,7 @@ require (
 	github.com/pion/ice/v4 v4.2.5
 	github.com/pion/transport/v4 v4.0.1
 	github.com/pion/webrtc/v4 v4.2.12
-	github.com/tmc/apple v0.6.5
+	github.com/tmc/apple v0.6.6
 )
 
 require (
