@@ -3,10 +3,10 @@
 // Package nwtransport adapts Network.framework UDP listeners to Pion's
 // transport.Net interface.
 //
-// The package is intentionally small: concrete UDP listeners, configured
-// wildcard UDP listeners, and concrete connected UDP dials use nwpacket, while
-// DNS, TCP, unconstrained wildcard UDP, and unsupported families fall back to
-// Pion's standard network implementation. This is enough to demonstrate Pion
-// ICE gathering and connectivity over Apple-only link policies without an ICE
-// UDP mux.
+// The package is intentionally small and hybrid: concrete UDP listeners,
+// configured wildcard UDP listeners, and concrete connected UDP dials use
+// nwpacket, while DNS, TCP, unconstrained wildcard UDP, and unsupported
+// families fall back to Pion's standard network implementation. This is enough
+// to demonstrate Pion ICE gathering and connectivity over Apple-only link
+// policies without an ICE UDP mux.
 package nwtransport

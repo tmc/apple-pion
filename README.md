@@ -13,3 +13,8 @@ The current package is:
 The module uses `replace github.com/tmc/apple => ../apple` until the
 `x/network/nwpacket` package is available in a released `github.com/tmc/apple`
 version.
+
+`nwtransport` is intentionally hybrid. Network.framework owns the UDP listeners
+and UDP dials needed for Pion ICE on a selected Apple link. DNS, TCP,
+unconstrained wildcard UDP, TURN/STUN helper traffic outside that selected UDP
+surface, and unsupported address families stay on the fallback `transport.Net`.

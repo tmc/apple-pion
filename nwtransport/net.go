@@ -18,8 +18,8 @@ type Config struct {
 	// Packet is copied for each UDP listener created through ListenPacket.
 	Packet nwpacket.Config
 
-	// Fallback handles non-UDP operations and UDP operations that should remain
-	// on Go's standard network stack.
+	// Fallback handles DNS, TCP, unconstrained wildcard UDP, and unsupported
+	// UDP cases. If nil, New uses Pion's standard network implementation.
 	Fallback transport.Net
 }
 
