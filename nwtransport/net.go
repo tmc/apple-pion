@@ -48,7 +48,7 @@ func New(config Config) (*Net, error) {
 
 // ListenPacket announces on the local network address.
 func (n *Net) ListenPacket(network string, address string) (net.PacketConn, error) {
-	addr, ok, err := nativePacketAddress(network, address)
+	addr, ok, err := n.listenPacketAddress(network, address)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (n *Net) listenNativePacketContext(ctx context.Context, addr *net.UDPAddr) 
 
 // ListenUDP acts like ListenPacket for UDP networks.
 func (n *Net) ListenUDP(network string, locAddr *net.UDPAddr) (transport.UDPConn, error) {
-	addr, ok := nativeUDPAddr(network, locAddr)
+	addr, ok := n.listenUDPAddr(network, locAddr)
 	if ok {
 		conn, err := n.listenNativePacket(addr)
 		if err != nil {
@@ -243,7 +243,7 @@ func (l listenConfig) ListenPacket(ctx context.Context, network, address string)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	addr, ok, err := nativePacketAddress(network, address)
+	addr, ok, err := l.net.listenPacketAddress(network, address)
 	if err != nil {
 		return nil, err
 	}
@@ -362,6 +362,44 @@ func nativePacketAddress(network string, address string) (*net.UDPAddr, bool, er
 	}
 	addr, ok := nativeUDPAddr(network, addr)
 	return addr, ok, nil
+}
+
+func (n *Net) listenPacketAddress(network string, address string) (*net.UDPAddr, bool, error) {
+	switch network {
+	case "udp", "udp4", "udp6":
+	default:
+		return nil, false, nil
+	}
+	addr, err := net.ResolveUDPAddr(network, address)
+	if err != nil {
+		return nil, false, fmt.Errorf("resolve udp listen address %q: %w", address, err)
+	}
+	addr, ok := n.listenUDPAddr(network, addr)
+	return addr, ok, nil
+}
+
+func (n *Net) listenUDPAddr(network string, addr *net.UDPAddr) (*net.UDPAddr, bool) {
+	if addr, ok := nativeUDPAddr(network, addr); ok {
+		return addr, true
+	}
+	if addr != nil && addr.IP != nil && !addr.IP.IsUnspecified() {
+		return nil, false
+	}
+	return n.configuredListenAddr(network, addr)
+}
+
+func (n *Net) configuredListenAddr(network string, requested *net.UDPAddr) (*net.UDPAddr, bool) {
+	addr, ok := nativeUDPAddr(network, n.config.Packet.LocalAddr)
+	if !ok {
+		return nil, false
+	}
+	if requested != nil {
+		addr.Port = requested.Port
+		if addr.Zone == "" {
+			addr.Zone = requested.Zone
+		}
+	}
+	return addr, true
 }
 
 func nativeUDPAddr(network string, addr *net.UDPAddr) (*net.UDPAddr, bool) {

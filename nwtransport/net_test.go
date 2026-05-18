@@ -43,6 +43,53 @@ func TestNativePacketAddress(t *testing.T) {
 	}
 }
 
+func TestListenPacketUsesConfiguredAddressForWildcard(t *testing.T) {
+	n, err := New(Config{Packet: nwpacket.Config{
+		LocalAddr: &net.UDPAddr{IP: net.ParseIP("192.0.2.1"), Port: 1000},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotLocal *net.UDPAddr
+	n.listenPacket = func(ctx context.Context, config nwpacket.Config) (net.PacketConn, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		gotLocal = copyUDPAddr(config.LocalAddr)
+		return &queuePacketConn{}, nil
+	}
+	if _, err := n.ListenPacket("udp4", "0.0.0.0:9999"); err != nil {
+		t.Fatal(err)
+	}
+	if gotLocal == nil || gotLocal.String() != "192.0.2.1:9999" {
+		t.Fatalf("native local = %v, want 192.0.2.1:9999", gotLocal)
+	}
+}
+
+func TestListenUDPUsesConfiguredAddressForNilLocal(t *testing.T) {
+	n, err := New(Config{Packet: nwpacket.Config{
+		InterfaceName: "awdl0",
+		LocalAddr:     &net.UDPAddr{IP: net.ParseIP("fe80::1"), Port: 1000},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotLocal *net.UDPAddr
+	n.listenPacket = func(ctx context.Context, config nwpacket.Config) (net.PacketConn, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		gotLocal = copyUDPAddr(config.LocalAddr)
+		return &queuePacketConn{}, nil
+	}
+	if _, err := n.ListenUDP("udp6", nil); err != nil {
+		t.Fatal(err)
+	}
+	if gotLocal == nil || gotLocal.String() != "[fe80::1%awdl0]:1000" {
+		t.Fatalf("native local = %v, want [fe80::1%%awdl0]:1000", gotLocal)
+	}
+}
+
 func TestUnzoneLinkLocalAddr(t *testing.T) {
 	linkLocal := net.ParseIP("fe80::1")
 	addr := unzoneLinkLocalAddr(&net.IPNet{IP: linkLocal, Mask: net.CIDRMask(64, 128)})
