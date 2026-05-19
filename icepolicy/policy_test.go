@@ -52,8 +52,8 @@ func TestCandidateInitsFromSDP(t *testing.T) {
 func TestHostAddressRewriteRule(t *testing.T) {
 	policy := Policy{RawHostCandidates: true}
 	rule := policy.hostAddressRewriteRule(net.ParseIP("fe80::1"))
-	if len(rule.External) != 1 || rule.External[0] != "fe80::1" {
-		t.Fatalf("external = %v, want [fe80::1]", rule.External)
+	if len(rule.External) != 1 || rule.External[0] != "fd00::1" {
+		t.Fatalf("external = %v, want [fd00::1]", rule.External)
 	}
 	if rule.Local != "fe80::1" {
 		t.Fatalf("local = %q, want fe80::1", rule.Local)

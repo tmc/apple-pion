@@ -30,7 +30,7 @@ func (p Policy) UsesSyntheticHostCandidate(localIP net.IP) bool {
 
 func (p Policy) hostAddressRewriteRule(localIP net.IP) webrtc.ICEAddressRewriteRule {
 	return webrtc.ICEAddressRewriteRule{
-		External:        []string{localIP.String()},
+		External:        []string{syntheticHostCandidateIP(localIP)},
 		Local:           localIP.String(),
 		AsCandidateType: webrtc.ICECandidateTypeHost,
 		Mode:            webrtc.ICEAddressRewriteReplace,
@@ -75,6 +75,13 @@ func CandidateInitsFromSDP(sdp string, policy Policy, localIP net.IP) []webrtc.I
 		}
 	}
 	return candidates
+}
+
+func syntheticHostCandidateIP(ip net.IP) string {
+	if ip.To4() != nil {
+		return "198.18.0.1"
+	}
+	return "fd00::1"
 }
 
 func rewriteHostCandidateAddressLine(line string, ip net.IP) string {
