@@ -110,6 +110,50 @@ func TestUnzoneLinkLocalAddr(t *testing.T) {
 	}
 }
 
+func TestInterfacesUseConfiguredAddress(t *testing.T) {
+	en0 := transport.NewInterface(net.Interface{Name: "en0", Index: 14})
+	en0.AddAddress(&net.IPNet{IP: net.ParseIP("192.0.2.1"), Mask: net.CIDRMask(24, 32)})
+	en0.AddAddress(&net.IPNet{IP: net.ParseIP("2001:db8::1"), Mask: net.CIDRMask(64, 128)})
+	awdl0 := transport.NewInterface(net.Interface{Name: "awdl0", Index: 16})
+	awdl0.AddAddress(&net.IPNet{IP: net.ParseIP("fe80::1"), Mask: net.CIDRMask(64, 128)})
+
+	n, err := New(Config{
+		Packet: nwpacket.Config{
+			InterfaceName: "en0",
+			LocalAddr:     &net.UDPAddr{IP: net.ParseIP("192.0.2.1"), Port: 1000},
+		},
+		Fallback: &interfacesNet{ifaces: []*transport.Interface{en0, awdl0}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ifaces, err := n.Interfaces()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *transport.Interface
+	for _, iface := range ifaces {
+		if iface.Name == "en0" {
+			got = iface
+			break
+		}
+	}
+	if got == nil {
+		t.Fatal("en0 not found")
+	}
+	addrs, err := got.Addrs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(addrs) != 1 {
+		t.Fatalf("en0 addresses = %v, want one configured address", addrs)
+	}
+	if ip := addrIP(addrs[0]); !ip.Equal(net.ParseIP("192.0.2.1")) {
+		t.Fatalf("en0 address = %v, want 192.0.2.1", addrs[0])
+	}
+}
+
 func TestNativeDialUDPAddrs(t *testing.T) {
 	n := &Net{config: Config{Packet: nwpacket.Config{
 		InterfaceName: "awdl0",
@@ -403,6 +447,16 @@ func (n *fallbackNet) ResolveTCPAddr(string, string) (*net.TCPAddr, error) {
 func (n *fallbackNet) Interfaces() ([]*transport.Interface, error) {
 	n.record("Interfaces")
 	return nil, errFallback
+}
+
+type interfacesNet struct {
+	fallbackNet
+	ifaces []*transport.Interface
+}
+
+func (n *interfacesNet) Interfaces() ([]*transport.Interface, error) {
+	n.record("Interfaces")
+	return n.ifaces, nil
 }
 
 func (n *fallbackNet) InterfaceByIndex(int) (*transport.Interface, error) {

@@ -170,32 +170,54 @@ func (n *Net) Interfaces() ([]*transport.Interface, error) {
 	}
 	out := make([]*transport.Interface, 0, len(ifaces))
 	for _, iface := range ifaces {
-		if iface.Name != n.config.Packet.InterfaceName {
-			out = append(out, iface)
-			continue
-		}
-		clone := transport.NewInterface(iface.Interface)
-		addrs, err := iface.Addrs()
-		if err != nil {
-			out = append(out, clone)
-			continue
-		}
-		for _, addr := range addrs {
-			clone.AddAddress(unzoneLinkLocalAddr(addr))
-		}
-		out = append(out, clone)
+		out = append(out, n.filterInterface(iface))
 	}
 	return out, nil
 }
 
 // InterfaceByIndex returns the interface specified by index.
 func (n *Net) InterfaceByIndex(index int) (*transport.Interface, error) {
-	return n.fallback.InterfaceByIndex(index)
+	iface, err := n.fallback.InterfaceByIndex(index)
+	if err != nil {
+		return nil, err
+	}
+	return n.filterInterface(iface), nil
 }
 
 // InterfaceByName returns the interface specified by name.
 func (n *Net) InterfaceByName(name string) (*transport.Interface, error) {
-	return n.fallback.InterfaceByName(name)
+	iface, err := n.fallback.InterfaceByName(name)
+	if err != nil {
+		return nil, err
+	}
+	return n.filterInterface(iface), nil
+}
+
+func (n *Net) filterInterface(iface *transport.Interface) *transport.Interface {
+	if iface == nil || n.config.Packet.InterfaceName == "" || iface.Name != n.config.Packet.InterfaceName {
+		return iface
+	}
+	clone := transport.NewInterface(iface.Interface)
+	if addr := n.configuredInterfaceAddress(); addr != nil {
+		clone.AddAddress(addr)
+		return clone
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return clone
+	}
+	for _, addr := range addrs {
+		clone.AddAddress(unzoneLinkLocalAddr(addr))
+	}
+	return clone
+}
+
+func (n *Net) configuredInterfaceAddress() net.Addr {
+	addr, ok := nativeUDPAddr("udp", n.config.Packet.LocalAddr)
+	if !ok {
+		return nil
+	}
+	return &net.IPAddr{IP: append(net.IP(nil), addr.IP...)}
 }
 
 // CreateDialer creates a dialer backed by this network.
