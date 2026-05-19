@@ -28,6 +28,7 @@ func TestNativePacketAddress(t *testing.T) {
 		{"udp6 scoped host", "udp6", "[fe80::1%awdl0]:9", true},
 		{"unspecified", "udp4", "0.0.0.0:0", false},
 		{"multicast", "udp4", "224.0.0.251:5353", false},
+		{"dns name", "udp4", "stun.example.test:3478", false},
 		{"tcp", "tcp4", "192.0.2.1:0", false},
 	}
 	for _, tt := range tests {
@@ -40,6 +41,35 @@ func TestNativePacketAddress(t *testing.T) {
 				t.Fatalf("nativePacketAddress(%q, %q) native = %t, want %t", tt.network, tt.address, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestNamedUDPAddressesUseFallback(t *testing.T) {
+	fallback := &fallbackNet{}
+	n, err := New(Config{
+		Packet: nwpacket.Config{
+			LocalAddr: &net.UDPAddr{IP: net.ParseIP("192.0.2.1"), Port: 1000},
+		},
+		Fallback: fallback,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n.listenPacket = func(context.Context, nwpacket.Config) (net.PacketConn, error) {
+		t.Fatal("native packet listener called for named UDP address")
+		return nil, nil
+	}
+
+	if _, err := n.ListenPacket("udp4", "localhost:9999"); !errors.Is(err, errFallback) {
+		t.Fatalf("ListenPacket err = %v, want %v", err, errFallback)
+	}
+	if _, err := n.Dial("udp4", "stun.example.test:3478"); !errors.Is(err, errFallback) {
+		t.Fatalf("Dial err = %v, want %v", err, errFallback)
+	}
+
+	want := []string{"ListenPacket", "Dial"}
+	if !equalStrings(fallback.calls, want) {
+		t.Fatalf("fallback calls = %q, want %q", fallback.calls, want)
 	}
 }
 
@@ -59,6 +89,29 @@ func TestListenPacketUsesConfiguredAddressForWildcard(t *testing.T) {
 		return &queuePacketConn{}, nil
 	}
 	if _, err := n.ListenPacket("udp4", "0.0.0.0:9999"); err != nil {
+		t.Fatal(err)
+	}
+	if gotLocal == nil || gotLocal.String() != "192.0.2.1:9999" {
+		t.Fatalf("native local = %v, want 192.0.2.1:9999", gotLocal)
+	}
+}
+
+func TestListenConfigListenPacketUsesConfiguredAddressForWildcard(t *testing.T) {
+	n, err := New(Config{Packet: nwpacket.Config{
+		LocalAddr: &net.UDPAddr{IP: net.ParseIP("192.0.2.1"), Port: 1000},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotLocal *net.UDPAddr
+	n.listenPacket = func(ctx context.Context, config nwpacket.Config) (net.PacketConn, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		gotLocal = copyUDPAddr(config.LocalAddr)
+		return &queuePacketConn{}, nil
+	}
+	if _, err := n.CreateListenConfig(&net.ListenConfig{}).ListenPacket(context.Background(), "udp4", "0.0.0.0:9999"); err != nil {
 		t.Fatal(err)
 	}
 	if gotLocal == nil || gotLocal.String() != "192.0.2.1:9999" {

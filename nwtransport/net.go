@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 
 	"github.com/pion/transport/v4"
 	"github.com/pion/transport/v4/stdnet"
@@ -129,12 +131,12 @@ func (n *Net) dialNativeUDP(network string, laddr, raddr *net.UDPAddr) (*udpConn
 }
 
 func (n *Net) dialNativeUDPAddress(network, address string) (*udpConn, bool, error) {
-	if !isUDPNetwork(network) {
-		return nil, false, nil
-	}
-	raddr, err := net.ResolveUDPAddr(network, address)
+	raddr, ok, err := literalUDPAddr(network, address)
 	if err != nil {
-		return nil, false, fmt.Errorf("resolve udp dial address %q: %w", address, err)
+		return nil, false, err
+	}
+	if !ok {
+		return nil, false, nil
 	}
 	return n.dialNativeUDP(network, nil, raddr)
 }
@@ -373,30 +375,26 @@ func (c *udpConn) WriteMsgUDP(b, oob []byte, addr *net.UDPAddr) (int, int, error
 }
 
 func nativePacketAddress(network string, address string) (*net.UDPAddr, bool, error) {
-	switch network {
-	case "udp", "udp4", "udp6":
-	default:
+	addr, ok, err := literalUDPAddr(network, address)
+	if err != nil {
+		return nil, false, err
+	}
+	if !ok {
 		return nil, false, nil
 	}
-	addr, err := net.ResolveUDPAddr(network, address)
-	if err != nil {
-		return nil, false, fmt.Errorf("resolve udp listen address %q: %w", address, err)
-	}
-	addr, ok := nativeUDPAddr(network, addr)
+	addr, ok = nativeUDPAddr(network, addr)
 	return addr, ok, nil
 }
 
 func (n *Net) listenPacketAddress(network string, address string) (*net.UDPAddr, bool, error) {
-	switch network {
-	case "udp", "udp4", "udp6":
-	default:
+	addr, ok, err := literalUDPAddr(network, address)
+	if err != nil {
+		return nil, false, err
+	}
+	if !ok {
 		return nil, false, nil
 	}
-	addr, err := net.ResolveUDPAddr(network, address)
-	if err != nil {
-		return nil, false, fmt.Errorf("resolve udp listen address %q: %w", address, err)
-	}
-	addr, ok := n.listenUDPAddr(network, addr)
+	addr, ok = n.listenUDPAddr(network, addr)
 	return addr, ok, nil
 }
 
@@ -477,6 +475,44 @@ func networkAllowsUDPAddr(network string, addr *net.UDPAddr) bool {
 	default:
 		return true
 	}
+}
+
+func literalUDPAddr(network string, address string) (*net.UDPAddr, bool, error) {
+	if !isUDPNetwork(network) {
+		return nil, false, nil
+	}
+	host, portText, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, false, fmt.Errorf("parse udp address %q: %w", address, err)
+	}
+	if host != "" {
+		ipText, zone, _ := strings.Cut(host, "%")
+		ip := net.ParseIP(ipText)
+		if ip == nil {
+			return nil, false, nil
+		}
+		port, err := udpPort(portText)
+		if err != nil {
+			return nil, false, err
+		}
+		return &net.UDPAddr{IP: ip, Port: port, Zone: zone}, true, nil
+	}
+	port, err := udpPort(portText)
+	if err != nil {
+		return nil, false, err
+	}
+	return &net.UDPAddr{Port: port}, true, nil
+}
+
+func udpPort(portText string) (int, error) {
+	port, err := strconv.Atoi(portText)
+	if err != nil {
+		return 0, fmt.Errorf("parse udp port %q: %w", portText, err)
+	}
+	if port < 0 || port > 65535 {
+		return 0, fmt.Errorf("parse udp port %q: out of range", portText)
+	}
+	return port, nil
 }
 
 func sameUDPAddr(a, b *net.UDPAddr) bool {
