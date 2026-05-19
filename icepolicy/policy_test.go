@@ -4,6 +4,8 @@ import (
 	"net"
 	"strings"
 	"testing"
+
+	"github.com/pion/webrtc/v4"
 )
 
 func TestPublishCandidateRawHostCandidates(t *testing.T) {
@@ -44,5 +46,22 @@ func TestCandidateInitsFromSDP(t *testing.T) {
 	}
 	if candidates[0].SDPMLineIndex == nil || *candidates[0].SDPMLineIndex != 0 {
 		t.Fatalf("candidate m-line = %v, want 0", candidates[0].SDPMLineIndex)
+	}
+}
+
+func TestHostAddressRewriteRule(t *testing.T) {
+	policy := Policy{RawHostCandidates: true}
+	rule := policy.hostAddressRewriteRule(net.ParseIP("fe80::1"))
+	if len(rule.External) != 1 || rule.External[0] != "fd00::1" {
+		t.Fatalf("external = %v, want [fd00::1]", rule.External)
+	}
+	if rule.Local != "fe80::1" {
+		t.Fatalf("local = %q, want fe80::1", rule.Local)
+	}
+	if rule.AsCandidateType != webrtc.ICECandidateTypeHost {
+		t.Fatalf("candidate type = %s, want host", rule.AsCandidateType)
+	}
+	if rule.Mode != webrtc.ICEAddressRewriteReplace {
+		t.Fatalf("mode = %v, want replace", rule.Mode)
 	}
 }

@@ -18,13 +18,23 @@ func (p Policy) Configure(se *webrtc.SettingEngine, mdnsMode ice.MulticastDNSMod
 	if mdnsMode != ice.MulticastDNSModeDisabled || !p.UsesSyntheticHostCandidate(localIP) {
 		return
 	}
-	se.SetNAT1To1IPs([]string{syntheticHostCandidateIP(localIP) + "/" + localIP.String()}, webrtc.ICECandidateTypeHost)
+	rule := p.hostAddressRewriteRule(localIP)
+	_ = se.SetICEAddressRewriteRules(rule)
 }
 
 // UsesSyntheticHostCandidate reports whether the policy needs Pion to gather a
 // synthetic host candidate that will be published as localIP.
 func (p Policy) UsesSyntheticHostCandidate(localIP net.IP) bool {
 	return p.RawHostCandidates && localIP != nil && localIP.To4() == nil && localIP.IsLinkLocalUnicast()
+}
+
+func (p Policy) hostAddressRewriteRule(localIP net.IP) webrtc.ICEAddressRewriteRule {
+	return webrtc.ICEAddressRewriteRule{
+		External:        []string{syntheticHostCandidateIP(localIP)},
+		Local:           localIP.String(),
+		AsCandidateType: webrtc.ICECandidateTypeHost,
+		Mode:            webrtc.ICEAddressRewriteReplace,
+	}
 }
 
 // PublishCandidate rewrites one gathered host candidate to the selected local
